@@ -1,28 +1,28 @@
-import cv2
-import numpy as np
+from paddleocr import PaddleOCR
 
-def find_element(screenshot_path, template_path, threshold=0.8):
+# 初始化 OCR
+ocr = PaddleOCR(use_angle_cls=True, lang='ch')
+
+def find_text_elements(screenshot_path, target_text):
     """
-    在截图中查找模板图片的位置
-    :param screenshot_path: 截图路径
-    :param template_path: 模板图片路径
-    :param threshold: 匹配阈值
-    :return: 找到的中心坐标 (x, y) 或 None
+    识别图片中所有包含 target_text 的元素，并按 Y 坐标从小到大排序
+    :return: 排序后的元素列表，每个元素包含 (text, box_center)
     """
-    img = cv2.imread(screenshot_path)
-    template = cv2.imread(template_path)
+    result = ocr.ocr(screenshot_path, cls=True)
+    elements = []
     
-    if img is None or template is None:
-        print("Error: Image or template not found.")
-        return None
-        
-    res = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-    
-    if max_val >= threshold:
-        h, w = template.shape[:2]
-        center_x = max_loc[0] + w // 2
-        center_y = max_loc[1] + h // 2
-        return (center_x, center_y)
-    
-    return None
+    if result[0] is None:
+        return []
+
+    for line in result[0]:
+        text = line[1][0]
+        if target_text in text:
+            # 计算中心坐标
+            box = line[0]
+            center_x = (box[0][0] + box[2][0]) / 2
+            center_y = (box[0][1] + box[2][1]) / 2
+            elements.append((text, (center_x, center_y)))
+            
+    # 按 Y 坐标排序 (从小到大，即从上到下)
+    elements.sort(key=lambda x: x[1][1])
+    return elements
