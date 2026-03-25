@@ -1,0 +1,15 @@
+# 忽略图片目录
+img/
+
+# 忽略原始数据目录
+raw_data/
+
+# 忽略 Python 缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略临时文件
+temp_chunk_*.png
+*.log
+.DS_Store
