@@ -1,0 +1,57 @@
+[
+  {
+    "name": "珍珠香米饭",
+    "description": "珍珠白米饭500克（不够可续哦)",
+    "price": "￥2"
+  },
+  {
+    "name": "灵魂蛋炒饭",
+    "description": "（赌上厨师一生的炒饭)",
+    "price": "￥4.5"
+  },
+  {
+    "name": "农家小鱼小虾",
+    "description": "就爱小河鲜",
+    "price": "￥32"
+  },
+  {
+    "name": "土豆回锅肉",
+    "description": "《新吃法想尝试不后悔》",
+    "price": "￥24"
+  },
+  {
+    "name": "青椒炒鸡蛋",
+    "description": "《拌饭超赞，老板娘超爱。》",
+    "price": "￥18"
+  },
+  {
+    "name": "腐竹红烧肉",
+    "description": "《不后悔系列》",
+    "price": "￥32"
+  },
+  {
+    "name": "小炒香干",
+    "description": "《家的味道超下饭。》",
+    "price": "￥18"
+  },
+  {
+    "name": "烟笋炒腊肉",
+    "description": "《爱吃瘦肉》",
+    "price": "￥32"
+  },
+  {
+    "name": "四季豆回锅肉",
+    "description": "《堂食大份量》",
+    "price": "￥26"
+  },
+  {
+    "name": "川味辣子鸡",
+    "description": "《经典川菜超过瘾》",
+    "price": "￥28"
+  },
+  {
+    "name": "湘味小炒鸡",
+    "description": "《江湖特色菜(*T*)》",
+    "price": "￥28"
+  }
+]
