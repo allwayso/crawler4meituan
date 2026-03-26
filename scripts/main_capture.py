@@ -1,6 +1,6 @@
 import time
 import os
-import adb_utils
+import usb_tests.adb_utils as adb_utils
 import vision_utils
 
 # 配置
