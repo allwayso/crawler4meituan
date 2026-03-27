@@ -41,6 +41,7 @@ class RestaurantDetector:
         你是一个餐厅数据采集专家。请从以下 OCR 识别出的原始文本中，提取出餐厅列表。
         每个餐厅需要包含：名称 (name)、地址 (address)、评分 (rating)、顶部 Y 坐标 (y_min)。
         忽略非餐厅项的干扰项。
+        如果餐厅名后面有 "(xx" 且没有右括号包裹，请将这一部分清理掉。
         
         OCR 原始数据：
         {ocr_text}
@@ -59,7 +60,11 @@ class RestaurantDetector:
         
         content = response.choices[0].message.content
         content = content.replace("```json", "").replace("```", "").strip()
-        cleaned_data = json.loads(content)
+        try:
+            cleaned_data = json.loads(content)
+        except json.JSONDecodeError:
+            print(f"LLM 返回内容无法解析为 JSON: {content}")
+            return []
         
         # 补充 ID
         for item in cleaned_data:
