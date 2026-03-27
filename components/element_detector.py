@@ -38,8 +38,10 @@ class ElementDetector:
         Raises:
             ElementNotFoundException: 若未找到目标文字。
         """
+        # 获取内存中的截图
+        screenshot = adb_utils.screenshot()
         screenshot_path = os.path.join(self.output_dir, "current_screen.png")
-        adb_utils.screenshot(screenshot_path)
+        screenshot.save(screenshot_path)
         
         result = self.ocr.ocr(screenshot_path, cls=True)
         

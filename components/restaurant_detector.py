@@ -71,12 +71,10 @@ class RestaurantDetector:
 
     def get_restaurants(self):
         """获取并清洗餐厅列表。"""
+        # 获取内存中的截图
+        screenshot = adb_utils.screenshot()
         screenshot_path = os.path.join(self.output_dir, "list.png")
-        adb_utils.screenshot(screenshot_path)
-        
-        if not os.path.exists(screenshot_path):
-            print(f"Error: Screenshot not found at {screenshot_path}")
-            return []
+        screenshot.save(screenshot_path)
         
         # 1. OCR 识别
         restaurants = self.ocr_detect(screenshot_path)
