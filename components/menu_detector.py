@@ -1,23 +1,76 @@
 """
 Spec:
 6. 菜单识别组件 (menu_detector.py)
-功能：接受两张截图，执行 OCR 识别和 LLM 清洗，返回 JSONL 格式的菜单数据。
+功能：接受两张截图，执行 OCR 识别和 LLM 清洗，返回菜单数据列表。
 输入：两张截图路径。
-输出：JSONL 格式的菜单数据。
+输出：菜单数据列表（包含菜名、价格、描述）。
 """
-from typing import List
+import os
+import json
+from typing import List, Dict
+from paddleocr import PaddleOCR
+from components.config_manager import config_manager
 
-def detect_menu(restaurant_id: str, screenshot_path1: str, screenshot_path2: str) -> str:
-    """
-    接受两张截图，执行 OCR 识别和 LLM 清洗。
-    将截图、OCR 结果和 LLM 结果存入 data/temp/restaurants/{restaurant_id}/menu_info/。
-    
-    Args:
-        restaurant_id (str): 餐厅 ID。
-        screenshot_path1 (str): 第一张截图路径。
-        screenshot_path2 (str): 第二张截图路径。
+class MenuDetector:
+    def __init__(self) -> None:
+        self.client = config_manager.get_client()
+        # 初始化 OCR
+        self.ocr = PaddleOCR(use_angle_cls=True, lang='ch')
+
+    def ocr_detect(self, screenshot_path: str) -> List[str]:
+        """识别截图中的文字。"""
+        result = self.ocr.ocr(screenshot_path, cls=True)
+        texts = []
+        if result[0] is not None:
+            for line in result[0]:
+                texts.append(line[1][0])
+        return texts
+
+    def llm_clean(self, texts1: List[str], texts2: List[str]) -> List[Dict]:
+        """调用 LLM 从 OCR 原始数据中提取菜单数据。"""
+        prompt = f"""
+        你是一个菜单数据采集专家。请从以下两张截图的 OCR 识别出的原始文本中，提取出菜单数据（菜名、价格、描述）。
+        忽略非菜单项的干扰项。
         
-    Returns:
-        str: JSONL 格式的菜单数据。
-    """
-    pass
+        OCR 原始数据 1：
+        {json.dumps(texts1, ensure_ascii=False)}
+        
+        OCR 原始数据 2：
+        {json.dumps(texts2, ensure_ascii=False)}
+        
+        请直接输出一个 JSON 格式的菜单列表，每个元素包含 dish_name, price, description。
+        如果没有从 OCR 中找到描述，则 description 留空字符串。
+        例如：
+        [
+            {{"dish_name": "红烧肉", "price": 38.0, "description": "精选五花肉，肥而不腻"}},
+            {{"dish_name": "清蒸鱼", "price": 58.0, "description": ""}}
+        ]
+        """
+        
+        response = self.client.chat.completions.create(
+            model="google/gemini-3.1-flash-lite-preview",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        content = response.choices[0].message.content
+        content = content.replace("```json", "").replace("```", "").strip()
+        return json.loads(content)
+
+    def detect_menu(self, screenshot_path1: str, screenshot_path2: str) -> List[Dict]:
+        """
+        接受两张截图，执行 OCR 识别和 LLM 清洗。
+        
+        Args:
+            screenshot_path1 (str): 第一张截图路径。
+            screenshot_path2 (str): 第二张截图路径。
+            
+        Returns:
+            List[Dict]: 菜单数据列表。
+        """
+        texts1 = self.ocr_detect(screenshot_path1)
+        texts2 = self.ocr_detect(screenshot_path2)
+        
+        return self.llm_clean(texts1, texts2)
+
+# 创建全局菜单检测器实例
+menu_detector = MenuDetector()
