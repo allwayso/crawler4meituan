@@ -44,12 +44,11 @@ class WorkflowManager:
                     
                     # 3. 调用 element_detector 找“菜品”
                     try:
+                        # 找到就点击
                         element_detector.find_element("菜品")
-                        # 若找到，点击返回坐标 (这里假设返回坐标是固定的，或者需要动态获取)
-                        # 根据需求，点击(50, 150)返回
-                        back_plugin.back()
                     except Exception:
-                        # 若抛出异常，break
+                        # 没找到就返回并 break
+                        back_plugin.back()
                         break
                     
                     # 4. 调用 element_detector 找“查看更多”
