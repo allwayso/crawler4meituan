@@ -38,7 +38,9 @@ class WorkflowManager:
                     current_restaurant = restaurant
                     
                     # 点击进入详情页
-                    adb_utils.tap(500, restaurant.get('y_min', 500) + 100)
+                    # 修正：直接点击 x=50, y=y_min+50
+                    y_coord = restaurant.get('y_min', 0) + 50
+                    adb_utils.tap(50, y_coord)
                     
                     # 3. 调用 element_detector 找“菜品”
                     try:
