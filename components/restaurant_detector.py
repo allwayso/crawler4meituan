@@ -28,12 +28,13 @@ class RestaurantDetector:
         return hashlib.md5(f"{name}_{address}".encode('utf-8')).hexdigest()
 
     def ocr_detect(self, screenshot_path: str) -> str:
-        """识别屏幕上的文字并保存到 ocr_raw.json。"""
+        """识别屏幕上的文字并保存到 ocr_raw.json (包含坐标)。"""
         result = self.ocr.ocr(screenshot_path, cls=True)
         texts = []
         if result[0] is not None:
             for line in result[0]:
-                texts.append(line[1][0])
+                # 记录文字和对应的坐标 (取左上角 y 坐标)
+                texts.append({"text": line[1][0], "y_min": line[0][0][1]})
         
         with open(self.ocr_raw_path, "w", encoding="utf-8") as f:
             json.dump(texts, f, ensure_ascii=False, indent=4)
@@ -46,11 +47,11 @@ class RestaurantDetector:
             ocr_text = f.read()
             
         prompt = f"""
-        你是一个餐厅数据采集专家。请从以下 OCR 识别出的原始文本中，提取出餐厅列表。
+        你是一个餐厅数据采集专家。请从以下 OCR 识别出的原始文本（包含文字和对应的 y 坐标）中，提取出餐厅列表。
         每个餐厅需要包含：名称 (name)、地址 (address)、评分 (rating)、顶部 Y 坐标 (y_min)。
         
         注意：
-        1. y_min 必须是该餐厅标题文字在屏幕上的真实像素 Y 坐标。
+        1. y_min 必须是该餐厅标题文字在屏幕上的真实像素 Y 坐标，请从 OCR 数据中准确提取。
         2. 忽略非餐厅项的干扰项。
         3. 如果餐厅名后面有 "(xx" 且没有右括号包裹，请将这一部分清理掉。
         
