@@ -5,3 +5,12 @@ Spec:
 输入：无（从配置文件读取）。
 输出：提供全局配置对象供其他组件调用。
 """
+
+class ConfigManager:
+    def __init__(self) -> None:
+        """初始化配置管理器。"""
+        pass
+
+    def get_config(self, key: str):
+        """获取指定配置项。"""
+        pass

@@ -1,0 +1,10 @@
+{"_id": "rest_001", "name": "魏厨私房菜", "location": {"address": "朝阳区某某路1号", "lat": 39.9042, "lng": 116.4074}}
+{"_id": "rest_002", "name": "老北京炸酱面", "location": {"address": "东城区某某胡同2号", "lat": 39.9150, "lng": 116.4100}}
+{"_id": "rest_003", "name": "川味火锅", "location": {"address": "海淀区某某街3号", "lat": 39.9800, "lng": 116.3000}}
+{"_id": "rest_004", "name": "粤式点心", "location": {"address": "西城区某某路4号", "lat": 39.9200, "lng": 116.3500}}
+{"_id": "rest_005", "name": "日式料理", "location": {"address": "朝阳区某某大厦5号", "lat": 39.9300, "lng": 116.4500}}
+{"_id": "rest_006", "name": "韩式烤肉", "location": {"address": "丰台区某某广场6号", "lat": 39.8500, "lng": 116.2800}}
+{"_id": "rest_007", "name": "意式披萨", "location": {"address": "石景山区某某路7号", "lat": 39.9100, "lng": 116.2000}}
+{"_id": "rest_008", "name": "美式汉堡", "location": {"address": "通州区某某街8号", "lat": 39.9000, "lng": 116.6500}}
+{"_id": "rest_009", "name": "泰式咖喱", "location": {"address": "大兴区某某路9号", "lat": 39.7500, "lng": 116.3300}}
+{"_id": "rest_010", "name": "法式甜点", "location": {"address": "顺义区某某胡同10号", "lat": 40.1300, "lng": 116.6500}}

@@ -1,8 +1,17 @@
 """
 Spec:
-6. 流程控制组件 (workflow_manager.py)
+7. 流程控制组件 (workflow_manager.py)
 功能：协调上述所有组件，执行完整的自动化采集循环。
 输入：无。
 输出：无（执行完整流程）。
 逻辑：负责维护已访问餐厅的状态，处理异常，并决定何时进行滑动加载更多。
 """
+
+class WorkflowManager:
+    def __init__(self) -> None:
+        """初始化流程控制管理器。"""
+        pass
+
+    def run(self) -> None:
+        """执行完整的自动化采集循环。"""
+        pass
