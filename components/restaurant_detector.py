@@ -61,11 +61,11 @@ class RestaurantDetector:
         content = content.replace("```json", "").replace("```", "").strip()
         cleaned_data = json.loads(content)
         
-        # 补充 ID 并过滤
+        # 补充 ID
         for item in cleaned_data:
             item['restaurant_id'] = self._generate_id(item.get('name', ''), item.get('address', ''))
             
-        return [item for item in cleaned_data if item.get('y_min', 0) >= 300]
+        return cleaned_data
 
     def get_restaurants(self) -> list:
         """获取并清洗餐厅列表。"""
