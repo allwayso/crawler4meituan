@@ -21,22 +21,30 @@ class RestaurantDetector:
         self.client = config_manager.get_client()
         # 初始化 OCR
         self.ocr = PaddleOCR(use_angle_cls=True, lang='ch')
+        self.ocr_raw_path = os.path.join(self.output_dir, "ocr_raw.json")
 
     def _generate_id(self, name: str, address: str) -> str:
         """根据名称和地址生成唯一 ID。"""
         return hashlib.md5(f"{name}_{address}".encode('utf-8')).hexdigest()
 
     def ocr_detect(self, screenshot_path: str) -> str:
-        """识别屏幕上的文字。"""
+        """识别屏幕上的文字并保存到 ocr_raw.json。"""
         result = self.ocr.ocr(screenshot_path, cls=True)
         texts = []
         if result[0] is not None:
             for line in result[0]:
                 texts.append(line[1][0])
-        return json.dumps(texts, ensure_ascii=False)
+        
+        with open(self.ocr_raw_path, "w", encoding="utf-8") as f:
+            json.dump(texts, f, ensure_ascii=False, indent=4)
+            
+        return self.ocr_raw_path
 
-    def llm_clean(self, ocr_text: str) -> list:
-        """调用 LLM 从 OCR 原始数据中提取餐厅信息。"""
+    def llm_clean(self, ocr_file_path: str) -> list:
+        """调用 LLM 从 OCR 原始数据文件路径中提取餐厅信息。"""
+        with open(ocr_file_path, "r", encoding="utf-8") as f:
+            ocr_text = f.read()
+            
         prompt = f"""
         你是一个餐厅数据采集专家。请从以下 OCR 识别出的原始文本中，提取出餐厅列表。
         每个餐厅需要包含：名称 (name)、地址 (address)、评分 (rating)、顶部 Y 坐标 (y_min)。
@@ -82,11 +90,11 @@ class RestaurantDetector:
         screenshot_path = os.path.join(self.output_dir, "list.png")
         screenshot.save(screenshot_path)
         
-        # 1. OCR 识别
-        ocr_text = self.ocr_detect(screenshot_path)
+        # 1. OCR 识别并保存到文件
+        ocr_file_path = self.ocr_detect(screenshot_path)
         
-        # 2. LLM 清洗
-        cleaned_data = self.llm_clean(ocr_text)
+        # 2. LLM 清洗，传入文件路径
+        cleaned_data = self.llm_clean(ocr_file_path)
         with open(os.path.join(self.output_dir, "cleaned_restaurants.json"), "w", encoding="utf-8") as f:
             json.dump(cleaned_data, f, ensure_ascii=False, indent=4)
         
