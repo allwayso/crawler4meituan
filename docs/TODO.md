@@ -1,21 +1,15 @@
-# TODO: 自动化采集系统重构计划
+# TODO: 内存化后续测试流程
 
-## 阶段一：组件设计与规格完善 (Component Design & Spec)
-- [ ] 完善所有组件的详细 Spec，包括：
-    - 方法声明 (Method Signatures)
-    - 输入/输出规格 (Input/Output Specs)
-    - 异常处理逻辑 (Exception Handling)
-- [ ] 确保组件接口与现有 `scripts/` 和 `test_restaurant/` 中的底层逻辑（如 ADB 操作、OCR 调用）兼容。
+## 测试顺序
+- [ ] 先测试基础组件：`restaurant_detector`、`element_detector`、`menu_detector`
+- [ ] 再测试工作流：`workflow_manager`
+- [ ] 组件测试通过后，再做工作流联调验证
 
-## 阶段二：测试用例设计 (Test Design)
-- [ ] 基于阶段一的详细 Spec 设计测试用例。
-- [ ] 明确测试策略：
-    - 输入域划分 (Partitioning)
-    - 边界条件测试
-    - 异常场景覆盖
-- [ ] 为每个测试用例注明其覆盖的 Partition。
+## 测试关注点
+- [ ] 确认截图、OCR、LLM 输入均可在内存中流转
+- [ ] 确认不再生成历史中间图片和中间 JSON
+- [ ] 确认最终输出 `restaurants.json` 内容正确
 
-## 阶段三：实现与调试 (Implementation & Debugging)
-- [ ] 编写组件实现代码。
-- [ ] 使用阶段二设计的测试用例对组件进行单元测试与调试。
-- [ ] 确保组件在集成前达到预期的功能与稳定性。
+## 说明
+- [ ] 暂不执行测试，留待后续人工验证
+- [ ] 如测试暴露问题，优先回到对应组件修复，再重新跑工作流

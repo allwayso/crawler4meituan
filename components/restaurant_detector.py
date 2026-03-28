@@ -6,46 +6,37 @@ Spec:
 输出：返回清洗后的餐厅列表（包含名称、地址、评分、ID、坐标等信息）。
 """
 
-import os
 import json
 import hashlib
+import numpy as np
 from paddleocr import PaddleOCR
 from components.config_manager import config_manager
 from test_restaurant import adb_utils
 
 class RestaurantDetector:
-    def __init__(self, output_dir: str = "D:/crawler/data/temp/restaurant_list") -> None:
-        self.output_dir = output_dir
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
+    def __init__(self) -> None:
         self.client = config_manager.get_client()
         # 初始化 OCR
         self.ocr = PaddleOCR(use_angle_cls=True, lang='ch')
-        self.ocr_raw_path = os.path.join(self.output_dir, "ocr_raw.json")
 
     def _generate_id(self, name: str, address: str) -> str:
         """根据名称和地址生成唯一 ID。"""
         return hashlib.md5(f"{name}_{address}".encode('utf-8')).hexdigest()
 
-    def ocr_detect(self, screenshot_path: str) -> str:
-        """识别屏幕上的文字并保存到 ocr_raw.json (包含坐标)。"""
-        result = self.ocr.ocr(screenshot_path, cls=True)
+    def ocr_detect(self, screenshot) -> list:
+        """识别屏幕上的文字，直接返回 OCR 原始结构。"""
+        if hasattr(screenshot, "convert"):
+            screenshot = np.array(screenshot)
+        result = self.ocr.ocr(screenshot, cls=True)
         texts = []
         if result[0] is not None:
             for line in result[0]:
                 # 记录文字和对应的坐标 (取左上角 y 坐标)
                 texts.append({"text": line[1][0], "y_min": line[0][0][1]})
-        
-        with open(self.ocr_raw_path, "w", encoding="utf-8") as f:
-            json.dump(texts, f, ensure_ascii=False, indent=4)
-            
-        return self.ocr_raw_path
+        return texts
 
-    def llm_clean(self, ocr_file_path: str) -> list:
-        """调用 LLM 从 OCR 原始数据文件路径中提取餐厅信息。"""
-        with open(ocr_file_path, "r", encoding="utf-8") as f:
-            ocr_text = f.read()
-            
+    def llm_clean(self, ocr_texts: list) -> list:
+        """调用 LLM 从 OCR 原始数据中提取餐厅信息。"""
         prompt = f"""
         你是一个餐厅数据采集专家。请从以下 OCR 识别出的原始文本（包含文字和对应的 y 坐标）中，提取出餐厅列表。
         每个餐厅需要包含：名称 (name)、地址 (address)、评分 (rating)、顶部 Y 坐标 (y_min)。
@@ -54,9 +45,10 @@ class RestaurantDetector:
         1. y_min 必须是该餐厅标题文字在屏幕上的真实像素 Y 坐标，请从 OCR 数据中准确提取。
         2. 忽略非餐厅项的干扰项。
         3. 如果餐厅名后面有 "(xx" 且没有右括号包裹，请将这一部分清理掉。
+        4. 忽略y值小于400的项
         
         OCR 原始数据：
-        {ocr_text}
+        {json.dumps(ocr_texts, ensure_ascii=False)}
         
         请直接输出一个 JSON 格式的列表，例如：
         [
@@ -86,18 +78,13 @@ class RestaurantDetector:
 
     def get_restaurants(self) -> list:
         """获取并清洗餐厅列表。"""
-        # 获取内存中的截图
         screenshot = adb_utils.screenshot()
-        screenshot_path = os.path.join(self.output_dir, "list.png")
-        screenshot.save(screenshot_path)
-        
-        # 1. OCR 识别并保存到文件
-        ocr_file_path = self.ocr_detect(screenshot_path)
-        
-        # 2. LLM 清洗，传入文件路径
-        cleaned_data = self.llm_clean(ocr_file_path)
-        with open(os.path.join(self.output_dir, "cleaned_restaurants.json"), "w", encoding="utf-8") as f:
-            json.dump(cleaned_data, f, ensure_ascii=False, indent=4)
+
+        # 1. OCR 识别，直接保留在内存中
+        ocr_texts = self.ocr_detect(screenshot)
+
+        # 2. LLM 清洗，直接传入 OCR 结构
+        cleaned_data = self.llm_clean(ocr_texts)
         
         return cleaned_data
 

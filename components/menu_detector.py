@@ -5,9 +5,9 @@ Spec:
 输入：两张截图路径。
 输出：菜单数据列表（包含菜名、价格、描述）。
 """
-import os
 import json
 from typing import List, Dict
+import numpy as np
 from paddleocr import PaddleOCR
 from components.config_manager import config_manager
 
@@ -17,9 +17,11 @@ class MenuDetector:
         # 初始化 OCR
         self.ocr = PaddleOCR(use_angle_cls=True, lang='ch')
 
-    def ocr_detect(self, screenshot_path: str) -> List[str]:
+    def ocr_detect(self, screenshot) -> List[str]:
         """识别截图中的文字。"""
-        result = self.ocr.ocr(screenshot_path, cls=True)
+        if hasattr(screenshot, "convert"):
+            screenshot = np.array(screenshot)
+        result = self.ocr.ocr(screenshot, cls=True)
         texts = []
         if result[0] is not None:
             for line in result[0]:
@@ -56,19 +58,19 @@ class MenuDetector:
         content = content.replace("```json", "").replace("```", "").strip()
         return json.loads(content)
 
-    def detect_menu(self, screenshot_path1: str, screenshot_path2: str) -> List[Dict]:
+    def detect_menu(self, screenshot1, screenshot2) -> List[Dict]:
         """
-        接受两张截图，执行 OCR 识别和 LLM 清洗。
+        接受两张截图对象，执行 OCR 识别和 LLM 清洗。
         
         Args:
-            screenshot_path1 (str): 第一张截图路径。
-            screenshot_path2 (str): 第二张截图路径。
+            screenshot1: 第一张截图对象。
+            screenshot2: 第二张截图对象。
             
         Returns:
             List[Dict]: 菜单数据列表。
         """
-        texts1 = self.ocr_detect(screenshot_path1)
-        texts2 = self.ocr_detect(screenshot_path2)
+        texts1 = self.ocr_detect(screenshot1)
+        texts2 = self.ocr_detect(screenshot2)
         
         return self.llm_clean(texts1, texts2)
 

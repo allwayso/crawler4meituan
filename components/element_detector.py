@@ -6,8 +6,8 @@ Spec:
 输出：返回目标元素的中心坐标。
 异常：若未找到目标文字，抛出 ElementNotFoundException。
 """
-import os
 from typing import Tuple
+import numpy as np
 from paddleocr import PaddleOCR
 from test_restaurant import adb_utils
 
@@ -18,10 +18,7 @@ class ElementNotFoundException(Exception):
         super().__init__(f"未在当前页面找到目标元素: {target_text}")
 
 class ElementDetector:
-    def __init__(self, output_dir: str = "D:/crawler/data/temp/element_detection") -> None:
-        self.output_dir = output_dir
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
+    def __init__(self) -> None:
         # 初始化 OCR
         self.ocr = PaddleOCR(use_angle_cls=True, lang='ch')
 
@@ -38,12 +35,10 @@ class ElementDetector:
         Raises:
             ElementNotFoundException: 若未找到目标文字。
         """
-        # 获取内存中的截图
         screenshot = adb_utils.screenshot()
-        screenshot_path = os.path.join(self.output_dir, "current_screen.png")
-        screenshot.save(screenshot_path)
-        
-        result = self.ocr.ocr(screenshot_path, cls=True)
+        if hasattr(screenshot, "convert"):
+            screenshot = np.array(screenshot)
+        result = self.ocr.ocr(screenshot, cls=True)
         
         if result[0] is None:
             raise ElementNotFoundException(target_text)

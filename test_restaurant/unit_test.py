@@ -48,9 +48,9 @@ def run_cycle():
         print("未找到新餐厅")
         return
 
-    # 3. 点击餐厅 (点击标题下方 150 处)
+    # 3. 点击餐厅 (点击标题下方 50 处)
     print(f"点击餐厅: {target_restaurant[0]}, y_min: {target_restaurant[2]}")
-    adb_utils.tap(target_restaurant[1], target_restaurant[2] + 150)
+    adb_utils.tap(target_restaurant[1], target_restaurant[2] + 50)
     VISITED_RESTAURANTS[target_restaurant[0]] = True
     time.sleep(2)
     

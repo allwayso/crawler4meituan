@@ -6,11 +6,22 @@ Spec:
 输出：提供全局配置对象供其他组件调用。
 """
 
+from openai import OpenAI
+
+# 配置 API
+client = OpenAI(
+    api_key="sk-of-xbpMtWhFmirJfZCrehRXVRByJbPuuSVLJRwutlpZySqrYiUYlBiFUQiIgfLyfEVC",
+    base_url="https://api.ofox.ai/v1"
+)
+
 class ConfigManager:
     def __init__(self) -> None:
         """初始化配置管理器。"""
-        pass
+        self.client = client
 
-    def get_config(self, key: str):
-        """获取指定配置项。"""
-        pass
+    def get_client(self):
+        """获取 OpenAI 客户端实例。"""
+        return self.client
+
+# 创建全局配置管理器实例
+config_manager = ConfigManager()
