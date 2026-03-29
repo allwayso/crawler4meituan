@@ -11,7 +11,7 @@ import hashlib
 import numpy as np
 from paddleocr import PaddleOCR
 from components.config_manager import config_manager
-from test_restaurant import adb_utils
+from components.adb_utils import adb_utils
 
 class RestaurantDetector:
     def __init__(self) -> None:

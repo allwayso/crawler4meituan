@@ -5,7 +5,7 @@ Spec:
 输入：无。
 输出：无。
 """
-from test_restaurant import adb_utils
+from components.adb_utils import adb_utils
 
 class BackPlugin:
     def back(self):

@@ -9,7 +9,7 @@ Spec:
 from typing import Tuple
 import numpy as np
 from paddleocr import PaddleOCR
-from test_restaurant import adb_utils
+from components.adb_utils import adb_utils
 
 class ElementNotFoundException(Exception):
     """当未找到目标文字时抛出。"""

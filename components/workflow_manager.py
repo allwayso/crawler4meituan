@@ -10,7 +10,7 @@ from components.restaurant_detector import restaurant_detector
 from components.element_detector import element_detector
 from components.menu_detector import menu_detector
 from components.back_plugin import back_plugin
-from test_restaurant import adb_utils
+from components.adb_utils import adb_utils
 
 class WorkflowManager:
     def __init__(self, output_file: str = "D:/crawler/data/restaurants.json") -> None:

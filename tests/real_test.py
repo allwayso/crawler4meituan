@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from components.element_detector import element_detector
 from components.back_plugin import back_plugin
 from components.workflow_manager import workflow_manager
-from test_restaurant import adb_utils
+from components.adb_utils import adb_utils
 
 
 def run_fixed_position_probe(rounds: int = 3):
