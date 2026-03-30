@@ -26,6 +26,34 @@ def swipe(x1, y1, x2, y2, duration=500):
     run_adb(["shell", "input", "swipe", str(x1), str(y1), str(x2), str(y2), str(duration)])
 
 
+def input_text(text: str):
+    """向当前获得焦点的输入框注入文本。
+
+    说明：前提是光标已在输入框中（tap 到输入框）。
+    """
+    # ADB input text 使用空格需要转义为 %s（这里用最常见的处理：空格转为 %s）
+    safe = text.replace(" ", "%s")
+    print(f"Executing input_text: {text}")
+    run_adb(["shell", "input", "text", safe])
+
+
+def press_keyevent(keyevent: int):
+    """执行 Android keyevent，例如 66(Enter)、67(Del) 等。"""
+    print(f"Executing keyevent: {keyevent}")
+    run_adb(["shell", "input", "keyevent", str(keyevent)])
+
+
+def press_enter():
+    """按 Enter."""
+    press_keyevent(66)
+
+
+def press_delete(times: int = 1):
+    """按 Delete 指定次数（常用于清空输入框）。"""
+    for _ in range(max(0, times)):
+        press_keyevent(67)
+
+
 def screenshot(filename=None):
     """截图并返回 PIL Image 对象。
 

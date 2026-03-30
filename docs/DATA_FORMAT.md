@@ -6,6 +6,7 @@
 ```json
 {
   "restaurant_id": "string",      // 唯一标识符
+  "city": "string",              // 城市（新增字段）
   "name": "string",               // 餐厅名称
   "address": "string",            // 截图中出现的地址
   "rating": "float",              // 评分
