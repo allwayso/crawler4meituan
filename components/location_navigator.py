@@ -16,23 +16,32 @@ from components.adb_utils import adb_utils
 class LocationNavigator:
     # TODO: 这几个坐标需要你在真机上探针确认后改成正确值
     # 建议探针：在美团首页处于“美食”界面，先执行 adb tap 逐个调整直到输入框获得焦点。
-    CITY_SEARCH_BAR_POS = (500, 150)  # 顶部输入框（按你经验值修正）
+    # 你已测试得到的关键坐标（美团首页“美食”顶部搜索栏）
+    CITY_SEARCH_BAR_POS = (500, 150)  # 输入框
+    SEARCH_BUTTON_POS = (960, 150)   # 搜索按钮
+    CLEAR_BUTTON_POS = (840, 150)    # 输入框右侧“清除/叉号”按钮
 
     # 若按回车后需要额外点“第一个候选项/结果”，这里预留坐标（可选）
     FIRST_SUGGESTION_POS = (250, 300)  # 占位值
 
     def _tap_search_bar(self):
         adb_utils.tap(*self.CITY_SEARCH_BAR_POS)
-        time.sleep(0.8)
+        time.sleep(2)
 
     def _input_and_submit(self, text: str, select_first: bool = False):
-        # 清空输入（假设已有内容）
-        # 如果你的页面不会自动保留上次输入，可把 press_delete 注释掉
-        adb_utils.press_delete(times=30)
+        # 清空输入框：优先点击右侧叉按钮（比长按 Delete 更稳定）
+        adb_utils.tap(*self.CLEAR_BUTTON_POS)
+        time.sleep(2)
+
+        # 点击叉号后有概率焦点丢失，需要再点一次输入框确保可输入
+        adb_utils.tap(*self.CITY_SEARCH_BAR_POS)
+        time.sleep(2)
 
         adb_utils.input_text(text)
-        time.sleep(0.5)
-        adb_utils.press_enter()
+        time.sleep(2)
+
+        # 点击搜索按钮
+        adb_utils.tap(*self.SEARCH_BUTTON_POS)
 
         # 等待页面跳转/结果渲染
         time.sleep(2.0)
@@ -41,7 +50,7 @@ class LocationNavigator:
             adb_utils.tap(*self.FIRST_SUGGESTION_POS)
             time.sleep(1.2)
 
-    def search_by_district_and_area(
+    def search(
         self,
         district: str,
         area: str,

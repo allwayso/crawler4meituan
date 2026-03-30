@@ -1,3 +1,4 @@
+import base64
 import subprocess
 import io
 import sys
@@ -27,14 +28,19 @@ def swipe(x1, y1, x2, y2, duration=500):
 
 
 def input_text(text: str):
-    """向当前获得焦点的输入框注入文本。
+    # 1. 保持 Base64 编码不变
+    encoded_text = base64.b64encode(text.encode('utf-8')).decode('utf-8')
 
-    说明：前提是光标已在输入框中（tap 到输入框）。
-    """
-    # ADB input text 使用空格需要转义为 %s（这里用最常见的处理：空格转为 %s）
-    safe = text.replace(" ", "%s")
-    print(f"Executing input_text: {text}")
-    run_adb(["shell", "input", "text", safe])
+    # 2. 关键修改：将 Action 改为 ADB_INPUT_B64
+    cmd = [
+        "shell", 
+        "am", "broadcast", 
+        "-a", "ADB_INPUT_B64",  # 注意这里改成了 B64 结尾
+        "--es", "msg", f"{encoded_text}"
+    ]
+
+    print(f"正在发送 Base64 编码内容: {text}")
+    run_adb(cmd)
 
 
 def press_keyevent(keyevent: int):
