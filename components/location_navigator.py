@@ -26,29 +26,29 @@ class LocationNavigator:
 
     def _tap_search_bar(self):
         adb_utils.tap(*self.CITY_SEARCH_BAR_POS)
-        time.sleep(2)
+        time.sleep(0.5)
 
     def _input_and_submit(self, text: str, select_first: bool = False):
         # 清空输入框：优先点击右侧叉按钮（比长按 Delete 更稳定）
         adb_utils.tap(*self.CLEAR_BUTTON_POS)
-        time.sleep(2)
+        time.sleep(0.5)
 
         # 点击叉号后有概率焦点丢失，需要再点一次输入框确保可输入
         adb_utils.tap(*self.CITY_SEARCH_BAR_POS)
-        time.sleep(2)
+        time.sleep(0.5)
 
         adb_utils.input_text(text)
-        time.sleep(2)
+        time.sleep(0.5)
 
         # 点击搜索按钮
         adb_utils.tap(*self.SEARCH_BUTTON_POS)
 
         # 等待页面跳转/结果渲染
-        time.sleep(2.0)
+        time.sleep(0.5)
 
         if select_first:
             adb_utils.tap(*self.FIRST_SUGGESTION_POS)
-            time.sleep(1.2)
+            time.sleep(0.5)
 
     def search(
         self,
