@@ -28,9 +28,9 @@ def main():
     # 为了避免和其他测试混写，单独建一个文件
     output_file = "D:/crawler/data/restaurants_run_test.json"
 
-    # 限制规模（避免一次跑太多）
-    top_district = 1
-    top_area_per_district = 1
+    # 完整流程：5 个区 x 5 个 areas
+    top_district = 5
+    top_area_per_district = 5
 
     # 可选：允许通过环境变量覆盖
     #   TOP_DISTRICT=2 TOP_AREA=3 python tests/workflow_run_test.py 上海

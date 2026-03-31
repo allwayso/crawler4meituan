@@ -37,6 +37,16 @@ class WorkflowManager:
 
         print(f"Loaded {len(restaurants)} restaurants from detector.")
 
+        # 方便你检查：打印本次识别到的餐厅列表（只打核心字段，避免太长）
+        try:
+            print("[Debug] Detected restaurant list:")
+            for r in restaurants:
+                print(
+                    f"  - {r.get('name','<unknown>')} | {r.get('address','')} | "
+                    f"rating={r.get('rating','')} | is_main_dish={r.get('is_main_dish')}")
+        except Exception as e:
+            print(f"[Debug] Failed to print detected restaurants: {e}")
+
         found_unvisited = False
         for index, restaurant in enumerate(restaurants, start=1):
             if restaurant.get('is_visited', False):
