@@ -11,12 +11,16 @@ import re
 import numpy as np
 from paddleocr import PaddleOCR
 from components.config_manager import config_manager
+from components.logging_utils import get_logger
+
+
+logger = get_logger(__name__)
 
 class MenuDetector:
     def __init__(self) -> None:
         self.client = config_manager.get_client()
         # 初始化 OCR
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='ch')
+        self.ocr = PaddleOCR(use_angle_cls=True, lang='ch', show_log=False)
 
     def ocr_detect(self, screenshot) -> List[str]:
         """识别截图中的文字。"""
@@ -73,7 +77,9 @@ class MenuDetector:
         except Exception:
             pass
 
-        print(f"[MenuDetector] LLM返回内容无法解析为 JSON，返回空列表。content_prefix={content[:80]!r}")
+        logger.warning(
+            f"[MenuDetector] LLM返回内容无法解析为 JSON，返回空列表。content_prefix={content[:80]!r}"
+        )
         return []
 
     def detect_menu(self, screenshot1, screenshot2) -> List[Dict]:

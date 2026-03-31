@@ -18,6 +18,10 @@ from components.city_searcher import city_district_area_searcher
 
 from typing import List, Dict, Optional
 from components.location_navigator import location_navigator
+from components.logging_utils import get_logger
+
+
+logger = get_logger(__name__)
 
 class WorkflowManager:
     def __init__(self, output_file: str = "D:/crawler/data/restaurants.json") -> None:
@@ -32,25 +36,17 @@ class WorkflowManager:
         restaurants = restaurant_detector.get_restaurants()
 
         if not restaurants:
-            print("No restaurants detected on current page.")
+            logger.warning("No restaurants detected on current page.")
             return
 
-        print(f"Loaded {len(restaurants)} restaurants from detector.")
-
-        # 方便你检查：打印本次识别到的餐厅列表（只打核心字段，避免太长）
-        try:
-            print("[Debug] Detected restaurant list:")
-            for r in restaurants:
-                print(
-                    f"  - {r.get('name','<unknown>')} | {r.get('address','')} | "
-                    f"rating={r.get('rating','')} | is_main_dish={r.get('is_main_dish')}")
-        except Exception as e:
-            print(f"[Debug] Failed to print detected restaurants: {e}")
+        logger.debug(f"Loaded {len(restaurants)} restaurants from detector.")
 
         found_unvisited = False
         for index, restaurant in enumerate(restaurants, start=1):
             if restaurant.get('is_visited', False):
-                print(f"[Skip] Restaurant #{index} already visited: {restaurant.get('name', '<unknown>')}")
+                logger.debug(
+                    f"[Skip] Restaurant #{index} already visited: {restaurant.get('name', '<unknown>')}"
+                )
                 continue
 
             found_unvisited = True
@@ -66,70 +62,80 @@ class WorkflowManager:
             # is_main_dish 由 restaurant_detector.llm_clean 严格保证为 true/false
             is_main_dish = current_restaurant.get('is_main_dish')
             if not isinstance(is_main_dish, bool):
-                print(f"[RestaurantType] invalid is_main_dish={is_main_dish!r}, skipping restaurant: {restaurant_name}")
+                logger.warning(
+                    f"[RestaurantType] invalid is_main_dish={is_main_dish!r}, skipping restaurant: {restaurant_name}"
+                )
                 continue
 
-            print(f"[Start] Restaurant #{index}: name={restaurant_name}, id={restaurant_id}, y={y_coord}")
+            logger.debug(
+                f"[Start] Restaurant #{index}: name={restaurant_name}, id={restaurant_id}, y={y_coord}"
+            )
 
             # 点击进入详情页
-            print(f"[Action] Tap restaurant entry at (50, {y_coord})")
+            logger.debug(f"[Action] Tap restaurant entry at (50, {y_coord})")
             adb_utils.tap(50, y_coord)
             time.sleep(2.5)
 
             # 找“菜品”
-            print("[Step] Searching for target element: 菜品")
+            logger.debug("[Step] Searching for target element: 菜品")
             try:
                 x, y = element_detector.find_element("菜品")
-                print(f"[Found] 菜品 at ({x}, {y}), tapping...")
+                logger.debug(f"[Found] 菜品 at ({x}, {y}), tapping...")
                 adb_utils.tap(x, y)
                 time.sleep(1)
             except Exception as exc:
-                print(f"[Miss] 菜品 not found: {exc}. Backing out one level.")
+                logger.warning(f"[Miss] 菜品 not found: {exc}. Backing out one level.")
                 back_plugin.back()
                 time.sleep(1)
                 continue
 
-            print(f"[RestaurantType] is_main_dish={is_main_dish}")
+            logger.debug(f"[RestaurantType] is_main_dish={is_main_dish}")
 
             if is_main_dish:
                 # 查看全部（优先 OCR 定位，找不到则 fallback 固定坐标）
                 try:
                     x, y = element_detector.find_element("查看全部")
-                    print(f"[Found] 查看全部 at ({x}, {y}), tapping...")
+                    logger.debug(f"[Found] 查看全部 at ({x}, {y}), tapping...")
                     adb_utils.tap(x, y)
                     time.sleep(1)
                 except Exception:
-                    print(f"[Fallback] Tap fixed position 查看全部 at {self.view_all_pos}")
+                    logger.debug(
+                        f"[Fallback] Tap fixed position 查看全部 at {self.view_all_pos}"
+                    )
                     adb_utils.tap(*self.view_all_pos)
                     time.sleep(1)
 
                 # 网友推荐（优先 OCR 定位，找不到则 fallback 固定坐标）
                 try:
                     x, y = element_detector.find_element("网友推荐")
-                    print(f"[Found] 网友推荐 at ({x}, {y}), tapping...")
+                    logger.debug(f"[Found] 网友推荐 at ({x}, {y}), tapping...")
                     adb_utils.tap(x, y)
                     time.sleep(1)
                 except Exception:
-                    print(f"[Fallback] Tap fixed position 网友推荐 at {self.recommend_pos}")
+                    logger.debug(
+                        f"[Fallback] Tap fixed position 网友推荐 at {self.recommend_pos}"
+                    )
                     adb_utils.tap(*self.recommend_pos)
                     time.sleep(1)
 
             # 菜单识别（正餐 & 非正餐：共同逻辑）
-            print("[Step] Collecting menu data via menu_detector.detect_menu")
+            logger.debug("[Step] Collecting menu data via menu_detector.detect_menu")
             menu_screenshot_1 = adb_utils.screenshot()
-            print("[Action] Swipe for second menu screenshot")
+            logger.debug("[Action] Swipe for second menu screenshot")
             adb_utils.swipe(500, 1500, 500, 600, 900)
             time.sleep(1)
             menu_screenshot_2 = adb_utils.screenshot()
 
             menu_data = menu_detector.detect_menu(menu_screenshot_1, menu_screenshot_2)
-            print(f"[Done] Menu items collected: {len(menu_data) if hasattr(menu_data, '__len__') else 'unknown'}")
+            logger.debug(
+                f"[Done] Menu items collected: {len(menu_data) if hasattr(menu_data, '__len__') else 'unknown'}"
+            )
 
             # 写入
             current_restaurant['menu'] = menu_data
             current_restaurant['is_visited'] = True
 
-            print(f"[Write] Appending restaurant data to {self.output_file}")
+            logger.debug(f"[Write] Appending restaurant data to {self.output_file}")
             with open(self.output_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(current_restaurant, ensure_ascii=False) + "\n")
 
@@ -137,20 +143,20 @@ class WorkflowManager:
             # - 正餐：原逻辑两次返回
             # - 非正餐：只需要返回一次（回到餐厅列表页）
             if is_main_dish:
-                print("[Action] Backing out to restaurant list (2x)")
+                logger.debug("[Action] Backing out to restaurant list (2x)")
                 back_plugin.back()
                 time.sleep(1)
                 back_plugin.back()
                 time.sleep(1)
             else:
-                print("[Action] Backing out to restaurant list (1x for non-main-dish)")
+                logger.debug("[Action] Backing out to restaurant list (1x for non-main-dish)")
                 back_plugin.back()
                 time.sleep(1)
 
             restaurant['is_visited'] = True
 
         if not found_unvisited:
-            print("No unvisited restaurants in current list.")
+            logger.info("No unvisited restaurants in current list.")
 
     def run(
         self,
@@ -165,7 +171,7 @@ class WorkflowManager:
         参数 city 为必填：会先生成/读取 districts(district->areas)，然后逐个区县/商圈切换到餐厅列表页采集。
         """
 
-        print("Workflow started...")
+        logger.info("Workflow started...")
 
         if top_district is None:
             top_district = self.top_district
@@ -179,9 +185,9 @@ class WorkflowManager:
                 top_area_per_district=top_area_per_district,
             )
 
-        print(f"Plan: city={city}, districts={len(districts)}")
+        logger.info(f"Plan: city={city}, districts={len(districts)}")
         if dry_run:
-            print("Dry run enabled, skip adb operations.")
+            logger.info("Dry run enabled, skip adb operations.")
             return districts
 
         # 逐个 district -> area 切换
@@ -195,7 +201,8 @@ class WorkflowManager:
                 if not area:
                     continue
 
-                print(f"[Navigate] city={city}, district={district}, area={area}")
+                # 导航日志默认不刷屏
+                logger.info(f"[Navigate] city={city}, district={district}, area={area}")
                 # LocationNavigator 当前对外接口为 search(district, area)
                 location_navigator.search(
                     district=str(district),
@@ -206,7 +213,7 @@ class WorkflowManager:
                 # 在当前“区/商圈”列表页采集
                 self._collect_for_current_restaurant_list(city=city)
 
-        print("Workflow finished.")
+        logger.info("Workflow finished.")
 
 # 创建全局工作流管理器实例
 workflow_manager = WorkflowManager()

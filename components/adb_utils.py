@@ -4,6 +4,11 @@ import io
 import sys
 from PIL import Image
 
+from components.logging_utils import get_logger
+
+
+logger = get_logger(__name__)
+
 
 def run_adb(command):
     """执行 ADB 命令并返回结果(stdout)。"""
@@ -11,19 +16,19 @@ def run_adb(command):
     full_command = [adb_path] + command
     result = subprocess.run(full_command, capture_output=True, text=True)
     if result.returncode != 0:
-        print(f"ADB Error: {result.stderr}")
+        logger.error(f"ADB Error: {result.stderr.strip()}")
     return result.stdout
 
 
 def tap(x, y):
     """点击指定坐标"""
-    print(f"Executing tap at {x}, {y}")
+    logger.debug(f"Executing tap at {x}, {y}")
     run_adb(["shell", "input", "tap", str(x), str(y)])
 
 
 def swipe(x1, y1, x2, y2, duration=500):
     """滑动屏幕"""
-    print(f"Executing swipe from ({x1}, {y1}) to ({x2}, {y2})")
+    logger.debug(f"Executing swipe from ({x1}, {y1}) to ({x2}, {y2})")
     run_adb(["shell", "input", "swipe", str(x1), str(y1), str(x2), str(y2), str(duration)])
 
 
@@ -39,13 +44,14 @@ def input_text(text: str):
         "--es", "msg", f"{encoded_text}"
     ]
 
-    print(f"正在发送 Base64 编码内容: {text}")
+    # 文本可能很长，避免默认 IO；仅在 DEBUG 开启时打印。
+    logger.debug(f"Sending Base64 input_text, len={len(text)}")
     run_adb(cmd)
 
 
 def press_keyevent(keyevent: int):
     """执行 Android keyevent，例如 66(Enter)、67(Del) 等。"""
-    print(f"Executing keyevent: {keyevent}")
+    logger.debug(f"Executing keyevent: {keyevent}")
     run_adb(["shell", "input", "keyevent", str(keyevent)])
 
 
@@ -76,7 +82,7 @@ def screenshot(filename=None):
 
     if filename:
         image.save(filename)
-        print(f"Screenshot saved to {filename}")
+        logger.debug(f"Screenshot saved to {filename}")
 
     return image
 

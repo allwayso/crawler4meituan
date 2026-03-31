@@ -10,6 +10,10 @@ from typing import Tuple
 import numpy as np
 from paddleocr import PaddleOCR
 from components.adb_utils import adb_utils
+from components.logging_utils import get_logger
+
+
+logger = get_logger(__name__)
 
 class ElementNotFoundException(Exception):
     """当未找到目标文字时抛出。"""
@@ -20,7 +24,7 @@ class ElementNotFoundException(Exception):
 class ElementDetector:
     def __init__(self) -> None:
         # 初始化 OCR
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='ch')
+        self.ocr = PaddleOCR(use_angle_cls=True, lang='ch', show_log=False)
 
     def find_element(self, target_text: str) -> Tuple[int, int]:
         """

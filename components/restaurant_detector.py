@@ -12,12 +12,16 @@ import numpy as np
 from paddleocr import PaddleOCR
 from components.config_manager import config_manager
 from components.adb_utils import adb_utils
+from components.logging_utils import get_logger
+
+
+logger = get_logger(__name__)
 
 class RestaurantDetector:
     def __init__(self) -> None:
         self.client = config_manager.get_client()
         # 初始化 OCR
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='ch')
+        self.ocr = PaddleOCR(use_angle_cls=True, lang='ch', show_log=False)
 
     def _generate_id(self, name: str, address: str) -> str:
         """根据名称和地址生成唯一 ID。"""
@@ -74,7 +78,7 @@ class RestaurantDetector:
         try:
             cleaned_data = json.loads(content)
         except json.JSONDecodeError:
-            print(f"LLM 返回内容无法解析为 JSON: {content}")
+            logger.warning(f"LLM 返回内容无法解析为 JSON (restaurant_detector), content_prefix={content[:80]!r}")
             return []
         
         # 补充 ID
@@ -82,7 +86,7 @@ class RestaurantDetector:
         for item in cleaned_data:
             # 不兼容旧数据：必须有 is_main_dish
             if 'is_main_dish' not in item:
-                print(f"[RestaurantDetector] skip item without is_main_dish: {item}")
+                logger.debug(f"skip item without is_main_dish: {item}")
                 continue
 
             # 严格要求只接受 true/false（允许 JSON boolean 或字符串 'true'/'false'）
@@ -96,10 +100,14 @@ class RestaurantDetector:
                 elif lowered == 'false':
                     is_main_dish = False
                 else:
-                    print(f"[RestaurantDetector] invalid is_main_dish value: {is_main_dish!r}, item skipped")
+                    logger.debug(
+                        f"invalid is_main_dish value: {is_main_dish!r}, item skipped"
+                    )
                     continue
             else:
-                print(f"[RestaurantDetector] invalid is_main_dish type: {type(is_main_dish)}, item skipped")
+                logger.debug(
+                    f"invalid is_main_dish type: {type(is_main_dish)}, item skipped"
+                )
                 continue
 
             item['restaurant_id'] = self._generate_id(item.get('name', ''), item.get('address', ''))
