@@ -116,7 +116,7 @@ class WorkflowManager:
 
     def run(
         self,
-        city: Optional[str] = None,
+        city: str,
         districts: Optional[List[Dict]] = None,
         top_district: Optional[int] = None,
         top_area_per_district: Optional[int] = None,
@@ -124,16 +124,10 @@ class WorkflowManager:
     ):
         """执行工作流。
 
-        - 若 city 为 None：保持旧行为，从当前页面直接采集餐厅列表。
-        - 若 city 不为 None：先生成/读取 districts (district->areas)，然后逐个区县/商圈切换到餐厅列表页采集。
+        参数 city 为必填：会先生成/读取 districts(district->areas)，然后逐个区县/商圈切换到餐厅列表页采集。
         """
 
         print("Workflow started...")
-
-        if city is None:
-            self._collect_for_current_restaurant_list(city=None)
-            print("Workflow finished.")
-            return
 
         if top_district is None:
             top_district = self.top_district
@@ -164,7 +158,8 @@ class WorkflowManager:
                     continue
 
                 print(f"[Navigate] city={city}, district={district}, area={area}")
-                location_navigator.search_by_district_and_area(
+                # LocationNavigator 当前对外接口为 search(district, area)
+                location_navigator.search(
                     district=str(district),
                     area=str(area),
                 )
