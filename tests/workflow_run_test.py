@@ -26,7 +26,7 @@ def main():
     city = sys.argv[1] if len(sys.argv) > 1 else "上海"
 
     # 为了避免和其他测试混写，单独建一个文件
-    output_file = "D:/crawler/data/restaurants_run_test.json"
+    output_file = "D:/crawler/data/restaurants_workflow_run_test.json"
 
     # 完整流程：5 个区 x 5 个 areas
     top_district = 5

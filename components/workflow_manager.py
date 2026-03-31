@@ -9,6 +9,7 @@ Spec:
 
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, Future
 from components.restaurant_detector import restaurant_detector
 from components.element_detector import element_detector
 from components.menu_detector import menu_detector
@@ -31,7 +32,75 @@ class WorkflowManager:
         self.top_district = 5
         self.top_area_per_district = 5
 
-    def _collect_for_current_restaurant_list(self, city: Optional[str] = None):
+        # 菜单识别耗时较长（OCR + LLM），可与 UI 操作并行。
+        # 先用单线程执行 OCR/LLM，避免 PaddleOCR / LLM 客户端的潜在线程安全问题。
+        self.menu_executor_workers = 1
+        # 同时最多挂起多少个“等待 OCR+LLM 的菜单任务”（避免占用过多截图内存）
+        self.menu_pending_limit = 2
+
+    def _write_restaurant_with_menu(self, restaurant_snapshot: Dict, menu_data: List[Dict]) -> None:
+        """只由主线程写文件，避免并发写导致数据竞争。"""
+        restaurant_snapshot["menu"] = menu_data
+        restaurant_snapshot["is_visited"] = True
+        with open(self.output_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(restaurant_snapshot, ensure_ascii=False) + "\n")
+
+    def _drain_completed_futures(
+        self,
+        pending: List[tuple[Future, Dict]],
+        *,
+        wait_for_one: bool = False,
+    ) -> None:
+        """收割已完成的菜单识别任务，把结果写入文件。
+
+        pending: [(future, restaurant_snapshot), ...]
+        """
+        if not pending:
+            return
+
+        i = 0
+        while i < len(pending):
+            fut, snapshot = pending[i]
+            if fut.done():
+                try:
+                    menu_data = fut.result()
+                except Exception as e:
+                    logger.warning(f"Menu detection failed, restaurant_id={snapshot.get('restaurant_id')}: {e}")
+                    menu_data = []
+                self._write_restaurant_with_menu(snapshot, menu_data)
+                pending.pop(i)
+            else:
+                i += 1
+
+        if wait_for_one and pending:
+            # 等待至少一个完成
+            for fut, _ in pending:
+                if not fut.done():
+                    fut.result()
+                    break
+
+            # 再清理一次
+            i = 0
+            while i < len(pending):
+                fut, snapshot = pending[i]
+                if fut.done():
+                    try:
+                        menu_data = fut.result()
+                    except Exception as e:
+                        logger.warning(f"Menu detection failed, restaurant_id={snapshot.get('restaurant_id')}: {e}")
+                        menu_data = []
+                    self._write_restaurant_with_menu(snapshot, menu_data)
+                    pending.pop(i)
+                else:
+                    i += 1
+
+    def _collect_for_current_restaurant_list(
+        self,
+        city: Optional[str] = None,
+        *,
+        menu_executor: ThreadPoolExecutor,
+        pending: List[tuple[Future, Dict]],
+    ):
         """从当前餐厅列表页开始，采集每家餐厅菜单并追加写入 restaurants.json。"""
         restaurants = restaurant_detector.get_restaurants()
 
@@ -54,6 +123,9 @@ class WorkflowManager:
             current_restaurant = restaurant
             # 与 DATA_FORMAT.md 对齐：restaurants.json 中增加 city 字段
             current_restaurant['city'] = city or ''
+
+            # 为异步 menu detection 做快照：主线程继续 UI 时，避免 snapshot 被后续覆盖。
+            restaurant_snapshot = dict(current_restaurant)
 
             restaurant_name = current_restaurant.get('name', '<unknown>')
             restaurant_id = current_restaurant.get('restaurant_id', '<unknown>')
@@ -92,31 +164,13 @@ class WorkflowManager:
             logger.debug(f"[RestaurantType] is_main_dish={is_main_dish}")
 
             if is_main_dish:
-                # 查看全部（优先 OCR 定位，找不到则 fallback 固定坐标）
-                try:
-                    x, y = element_detector.find_element("查看全部")
-                    logger.debug(f"[Found] 查看全部 at ({x}, {y}), tapping...")
-                    adb_utils.tap(x, y)
-                    time.sleep(1)
-                except Exception:
-                    logger.debug(
-                        f"[Fallback] Tap fixed position 查看全部 at {self.view_all_pos}"
-                    )
-                    adb_utils.tap(*self.view_all_pos)
-                    time.sleep(1)
+                # 查看全部：直接点击固定点（避免 OCR 找不到导致流程抖动）
+                adb_utils.tap(*self.view_all_pos)
+                time.sleep(0.5)
 
-                # 网友推荐（优先 OCR 定位，找不到则 fallback 固定坐标）
-                try:
-                    x, y = element_detector.find_element("网友推荐")
-                    logger.debug(f"[Found] 网友推荐 at ({x}, {y}), tapping...")
-                    adb_utils.tap(x, y)
-                    time.sleep(1)
-                except Exception:
-                    logger.debug(
-                        f"[Fallback] Tap fixed position 网友推荐 at {self.recommend_pos}"
-                    )
-                    adb_utils.tap(*self.recommend_pos)
-                    time.sleep(1)
+                # 网友推荐：直接点击固定点（避免 OCR 找不到导致流程抖动）
+                adb_utils.tap(*self.recommend_pos)
+                time.sleep(0.5)
 
             # 菜单识别（正餐 & 非正餐：共同逻辑）
             logger.debug("[Step] Collecting menu data via menu_detector.detect_menu")
@@ -126,18 +180,11 @@ class WorkflowManager:
             time.sleep(1)
             menu_screenshot_2 = adb_utils.screenshot()
 
-            menu_data = menu_detector.detect_menu(menu_screenshot_1, menu_screenshot_2)
-            logger.debug(
-                f"[Done] Menu items collected: {len(menu_data) if hasattr(menu_data, '__len__') else 'unknown'}"
-            )
-
             # 写入
-            current_restaurant['menu'] = menu_data
-            current_restaurant['is_visited'] = True
-
-            logger.debug(f"[Write] Appending restaurant data to {self.output_file}")
-            with open(self.output_file, "a", encoding="utf-8") as f:
-                f.write(json.dumps(current_restaurant, ensure_ascii=False) + "\n")
+            # 改为异步：这里不等待 OCR/LLM 完成，直接把 future 丢进 pending。
+            logger.debug(f"[Async] Submit menu detection for restaurant_id={restaurant_snapshot.get('restaurant_id')}")
+            future = menu_executor.submit(menu_detector.detect_menu, menu_screenshot_1, menu_screenshot_2)
+            pending.append((future, restaurant_snapshot))
 
             # 返回逻辑：
             # - 正餐：原逻辑两次返回
@@ -154,6 +201,10 @@ class WorkflowManager:
                 time.sleep(1)
 
             restaurant['is_visited'] = True
+
+            # 控制 pending 队列长度：达到阈值则先收割一个完成的
+            if len(pending) >= self.menu_pending_limit:
+                self._drain_completed_futures(pending, wait_for_one=True)
 
         if not found_unvisited:
             logger.info("No unvisited restaurants in current list.")
@@ -190,30 +241,41 @@ class WorkflowManager:
             logger.info("Dry run enabled, skip adb operations.")
             return districts
 
-        # 逐个 district -> area 切换
-        for d in districts:
-            district = d.get('district')
-            areas = d.get('areas', []) or []
-            if not district:
-                continue
-
-            for area in areas:
-                if not area:
+        pending: List[tuple[Future, Dict]] = []
+        with ThreadPoolExecutor(max_workers=self.menu_executor_workers) as menu_executor:
+            # 逐个 district -> area 切换
+            for d in districts:
+                district = d.get('district')
+                areas = d.get('areas', []) or []
+                if not district:
                     continue
 
-                # 导航日志默认不刷屏
-                logger.info(f"[Navigate] city={city}, district={district}, area={area}")
-                # LocationNavigator 当前对外接口为 search(district, area)
-                location_navigator.search(
-                    district=str(district),
-                    area=str(area),
-                )
-                time.sleep(2)
+                for area in areas:
+                    if not area:
+                        continue
 
-                # 在当前“区/商圈”列表页采集
-                self._collect_for_current_restaurant_list(city=city)
+                    # 导航日志默认不刷屏
+                    logger.info(f"[Navigate] city={city}, district={district}, area={area}")
+                    # LocationNavigator 当前对外接口为 search(district, area)
+                    location_navigator.search(
+                        district=str(district),
+                        area=str(area),
+                    )
+                    time.sleep(2)
 
-        logger.info("Workflow finished.")
+                    # 在当前“区/商圈”列表页采集（菜单识别异步）
+                    self._collect_for_current_restaurant_list(
+                        city=city,
+                        menu_executor=menu_executor,
+                        pending=pending,
+                    )
+
+            # 收尾：确保所有 menu detection 都完成并写入
+            self._drain_completed_futures(pending, wait_for_one=False)
+            while pending:
+                self._drain_completed_futures(pending, wait_for_one=True)
+
+            logger.info("Workflow finished.")
 
 # 创建全局工作流管理器实例
 workflow_manager = WorkflowManager()
