@@ -53,12 +53,18 @@ class WorkflowManager:
             restaurant_id = current_restaurant.get('restaurant_id', '<unknown>')
             y_coord = current_restaurant.get('y_min', 0) + 50
 
+            # is_main_dish 由 restaurant_detector.llm_clean 严格保证为 true/false
+            is_main_dish = current_restaurant.get('is_main_dish')
+            if not isinstance(is_main_dish, bool):
+                print(f"[RestaurantType] invalid is_main_dish={is_main_dish!r}, skipping restaurant: {restaurant_name}")
+                continue
+
             print(f"[Start] Restaurant #{index}: name={restaurant_name}, id={restaurant_id}, y={y_coord}")
 
             # 点击进入详情页
             print(f"[Action] Tap restaurant entry at (50, {y_coord})")
             adb_utils.tap(50, y_coord)
-            time.sleep(2)
+            time.sleep(2.5)
 
             # 找“菜品”
             print("[Step] Searching for target element: 菜品")
@@ -73,17 +79,32 @@ class WorkflowManager:
                 time.sleep(1)
                 continue
 
-            # 查看全部
-            print(f"[Action] Tap fixed position 查看全部 at {self.view_all_pos}")
-            adb_utils.tap(*self.view_all_pos)
-            time.sleep(1)
+            print(f"[RestaurantType] is_main_dish={is_main_dish}")
 
-            # 网友推荐
-            print(f"[Action] Tap fixed position 网友推荐 at {self.recommend_pos}")
-            adb_utils.tap(*self.recommend_pos)
-            time.sleep(1)
+            if is_main_dish:
+                # 查看全部（优先 OCR 定位，找不到则 fallback 固定坐标）
+                try:
+                    x, y = element_detector.find_element("查看全部")
+                    print(f"[Found] 查看全部 at ({x}, {y}), tapping...")
+                    adb_utils.tap(x, y)
+                    time.sleep(1)
+                except Exception:
+                    print(f"[Fallback] Tap fixed position 查看全部 at {self.view_all_pos}")
+                    adb_utils.tap(*self.view_all_pos)
+                    time.sleep(1)
 
-            # 菜单识别
+                # 网友推荐（优先 OCR 定位，找不到则 fallback 固定坐标）
+                try:
+                    x, y = element_detector.find_element("网友推荐")
+                    print(f"[Found] 网友推荐 at ({x}, {y}), tapping...")
+                    adb_utils.tap(x, y)
+                    time.sleep(1)
+                except Exception:
+                    print(f"[Fallback] Tap fixed position 网友推荐 at {self.recommend_pos}")
+                    adb_utils.tap(*self.recommend_pos)
+                    time.sleep(1)
+
+            # 菜单识别（正餐 & 非正餐：共同逻辑）
             print("[Step] Collecting menu data via menu_detector.detect_menu")
             menu_screenshot_1 = adb_utils.screenshot()
             print("[Action] Swipe for second menu screenshot")
@@ -102,12 +123,19 @@ class WorkflowManager:
             with open(self.output_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(current_restaurant, ensure_ascii=False) + "\n")
 
-            # 两次返回
-            print("[Action] Backing out to restaurant list (2x)")
-            back_plugin.back()
-            time.sleep(1)
-            back_plugin.back()
-            time.sleep(1)
+            # 返回逻辑：
+            # - 正餐：原逻辑两次返回
+            # - 非正餐：只需要返回一次（回到餐厅列表页）
+            if is_main_dish:
+                print("[Action] Backing out to restaurant list (2x)")
+                back_plugin.back()
+                time.sleep(1)
+                back_plugin.back()
+                time.sleep(1)
+            else:
+                print("[Action] Backing out to restaurant list (1x for non-main-dish)")
+                back_plugin.back()
+                time.sleep(1)
 
             restaurant['is_visited'] = True
 

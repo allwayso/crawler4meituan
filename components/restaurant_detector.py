@@ -39,7 +39,14 @@ class RestaurantDetector:
         """调用 LLM 从 OCR 原始数据中提取餐厅信息。"""
         prompt = f"""
         你是一个餐厅数据采集专家。请从以下 OCR 识别出的原始文本（包含文字和对应的 y 坐标）中，提取出餐厅列表。
+        过滤规则：
+        - 直接忽略连锁饮料/咖啡门店（例如：瑞幸、星巴克、喜茶、奈雪、CoCo、古茗、沪上阿姨、霸王茶姬、茶百道、一点点等），不要把它们输出为餐厅条目。
         每个餐厅需要包含：名称 (name)、地址 (address)、评分 (rating)、顶部 Y 坐标 (y_min)。
+        另外需要判断餐厅是否为"正餐"：
+        - 若为甜品/蛋糕/烘焙/西点/奶茶/饮品/咖啡/轻食等非正餐业态，则 is_main_dish=false
+        - 若为正餐（中餐/西餐/快餐/火锅/烧烤等）则 is_main_dish=true
+        
+        注意：判定时优先使用 OCR 中餐厅名/地址附近出现的关键词。
         
         注意：
         1. y_min 必须是该餐厅标题文字在屏幕上的真实像素 Y 坐标，请从 OCR 数据中准确提取。
@@ -52,8 +59,8 @@ class RestaurantDetector:
         
         请直接输出一个 JSON 格式的列表，例如：
         [
-            {{"name": "餐厅A", "address": "地址A", "rating": 4.5, "y_min": 100}},
-            {{"name": "餐厅B", "address": "地址B", "rating": 4.8, "y_min": 400}}
+            {{"name": "餐厅A", "address": "地址A", "rating": 4.5, "y_min": 100, "is_main_dish": true}},
+            {{"name": "餐厅B", "address": "地址B", "rating": 4.8, "y_min": 400, "is_main_dish": false}}
         ]
         """
         
@@ -71,10 +78,35 @@ class RestaurantDetector:
             return []
         
         # 补充 ID
+        normalized = []
         for item in cleaned_data:
+            # 不兼容旧数据：必须有 is_main_dish
+            if 'is_main_dish' not in item:
+                print(f"[RestaurantDetector] skip item without is_main_dish: {item}")
+                continue
+
+            # 严格要求只接受 true/false（允许 JSON boolean 或字符串 'true'/'false'）
+            is_main_dish = item.get('is_main_dish')
+            if isinstance(is_main_dish, bool):
+                pass
+            elif isinstance(is_main_dish, str):
+                lowered = is_main_dish.strip().lower()
+                if lowered == 'true':
+                    is_main_dish = True
+                elif lowered == 'false':
+                    is_main_dish = False
+                else:
+                    print(f"[RestaurantDetector] invalid is_main_dish value: {is_main_dish!r}, item skipped")
+                    continue
+            else:
+                print(f"[RestaurantDetector] invalid is_main_dish type: {type(is_main_dish)}, item skipped")
+                continue
+
             item['restaurant_id'] = self._generate_id(item.get('name', ''), item.get('address', ''))
+            item['is_main_dish'] = is_main_dish
+            normalized.append(item)
             
-        return cleaned_data
+        return normalized
 
     def get_restaurants(self) -> list:
         """获取并清洗餐厅列表。"""

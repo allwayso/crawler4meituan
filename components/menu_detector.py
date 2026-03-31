@@ -7,6 +7,7 @@ Spec:
 """
 import json
 from typing import List, Dict
+import re
 import numpy as np
 from paddleocr import PaddleOCR
 from components.config_manager import config_manager
@@ -42,6 +43,7 @@ class MenuDetector:
         
         请直接输出一个 JSON 格式的菜单列表，每个元素包含 dish_name, price, description。
         如果没有从 OCR 中找到描述，则 description 留空字符串。
+        注意：饮料/甜点等非正餐项也为合法菜品，但它们的 description 可能更简略。
         例如：
         [
             {{"dish_name": "红烧肉", "price": 38.0, "description": "精选五花肉，肥而不腻"}},
@@ -56,7 +58,23 @@ class MenuDetector:
         
         content = response.choices[0].message.content
         content = content.replace("```json", "").replace("```", "").strip()
-        return json.loads(content)
+
+        # 兜底：LLM 有时会返回非严格 JSON（例如空字符串、前后夹杂说明文字）
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            pass
+
+        # 尝试从文本中提取第一个 JSON 数组片段
+        try:
+            m = re.search(r"\[[\s\S]*\]", content)
+            if m:
+                return json.loads(m.group(0))
+        except Exception:
+            pass
+
+        print(f"[MenuDetector] LLM返回内容无法解析为 JSON，返回空列表。content_prefix={content[:80]!r}")
+        return []
 
     def detect_menu(self, screenshot1, screenshot2) -> List[Dict]:
         """

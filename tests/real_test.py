@@ -6,6 +6,7 @@ import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
+from components import back_plugin
 from components.location_navigator import LocationNavigator
 from components.city_searcher import city_district_area_searcher
 
@@ -70,4 +71,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # 我要在这里测试以下back_plugin，确保它不会干扰 location_navigator 的测试。
+    back_plugin.back()
+
+    # main()
