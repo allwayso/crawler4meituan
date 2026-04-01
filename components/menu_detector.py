@@ -47,6 +47,7 @@ class MenuDetector:
         
         请直接输出一个 JSON 格式的菜单列表，每个元素包含 dish_name, price, description。
         如果没有从 OCR 中找到描述，则 description 留空字符串。
+        如果没有识别到价格，则该条dish直接被清洗，不应计入菜品列表中
         注意：饮料/甜点等非正餐项也为合法菜品，但它们的 description 可能更简略。
         例如：
         [

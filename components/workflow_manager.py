@@ -192,13 +192,13 @@ class WorkflowManager:
             if is_main_dish:
                 logger.debug("[Action] Backing out to restaurant list (2x)")
                 back_plugin.back()
-                time.sleep(1)
+                time.sleep(0.5)
                 back_plugin.back()
-                time.sleep(1)
+                time.sleep(0.5)
             else:
                 logger.debug("[Action] Backing out to restaurant list (1x for non-main-dish)")
                 back_plugin.back()
-                time.sleep(1)
+                time.sleep(0.5)
 
             restaurant['is_visited'] = True
 
